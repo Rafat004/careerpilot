@@ -12,7 +12,11 @@ from datetime import datetime, timezone
 from typing import Any, Literal
 from urllib.parse import parse_qs, urlencode, urlparse
 
+import logging
+
 from db.supabase import supabase
+
+logger = logging.getLogger(__name__)
 
 ApplicationStatus = Literal["saved", "applied", "interviewing", "offer", "rejected"]
 

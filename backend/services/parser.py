@@ -48,12 +48,11 @@ def _generate_content_with_retry(model, contents, generation_config=None):
 
 def generate_content_with_fallback(contents, generation_config=None):
     models = [
-        'gemini-2.5-flash-lite',
-        'gemini-flash-lite-latest',
-        'gemini-2.0-flash-lite',
+        'gemini-3.5-flash-lite',
         'gemini-2.5-flash',
+        'gemini-flash-lite-latest',
         'gemini-flash-latest',
-        'gemini-2.0-flash',
+        'gemini-2.5-flash-lite',
     ]
     last_exception = None
     

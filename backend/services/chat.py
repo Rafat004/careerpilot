@@ -9,6 +9,7 @@ Handles business logic for conversational assistant:
 
 import os
 import json
+import logging
 import re
 from datetime import datetime, timedelta, timezone
 from typing import Any, AsyncGenerator, Optional
@@ -16,7 +17,23 @@ from groq import Groq, RateLimitError as GroqRateLimitError
 from db.supabase import supabase
 from services.key_pool import groq_pool, KeyPoolExhausted
 
-_MODEL = "llama-3.3-70b-versatile"
+logger = logging.getLogger(__name__)
+
+_DEFAULT_MODELS = [
+    "openai/gpt-oss-120b",
+    "qwen/qwen3.8-27b",
+    "openai/gpt-oss-20b",
+    "llama-3.3-70b-versatile",
+    "llama-3.1-8b-instant",
+]
+
+
+def _get_candidate_models() -> list[str]:
+    configured = os.environ.get("GROQ_MODEL", "").strip()
+    if configured:
+        return [configured] + [m for m in _DEFAULT_MODELS if m != configured]
+    return _DEFAULT_MODELS
+
 _MEMORY_LIMIT = 10
 _DEFAULT_SESSION_TITLE = "New conversation"
 _SESSION_TITLE_LIMIT = 42
@@ -514,20 +531,36 @@ For first-run onboarding, behave like a smart conversation, not a rigid form:
         for api_key in rotation:
             try:
                 groq_client = Groq(api_key=api_key)
-                stream = groq_client.chat.completions.create(
-                    model=_MODEL,
-                    messages=groq_messages,
-                    stream=True,
-                    temperature=0.35,
-                    max_tokens=1800,
-                )
-                for chunk in stream:
-                    token = chunk.choices[0].delta.content or ""
-                    if token:
-                        full_reply.append(token)
-                        yield f"data: {json.dumps({'token': token})}\n\n"
-                rotation.success()
-                break
+                model_succeeded = False
+                for candidate_model in _get_candidate_models():
+                    try:
+                        stream = groq_client.chat.completions.create(
+                            model=candidate_model,
+                            messages=groq_messages,
+                            stream=True,
+                            temperature=0.35,
+                            max_tokens=1800,
+                        )
+                        for chunk in stream:
+                            token = chunk.choices[0].delta.content or ""
+                            if token:
+                                full_reply.append(token)
+                                yield f"data: {json.dumps({'token': token})}\n\n"
+                        model_succeeded = True
+                        break
+                    except Exception as model_err:
+                        err_str = str(model_err)
+                        if "model_not_found" in err_str or "does not exist" in err_str:
+                            logger.warning(
+                                "Groq model '%s' unavailable, trying fallback: %s",
+                                candidate_model,
+                                model_err,
+                            )
+                            continue
+                        raise
+                if model_succeeded:
+                    rotation.success()
+                    break
             except GroqRateLimitError:
                 full_reply = []  # reset partial output before retry
                 continue

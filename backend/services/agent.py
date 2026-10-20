@@ -32,8 +32,22 @@ from services.key_pool import groq_pool, jsearch_pool, tavily_pool, KeyPoolExhau
 
 # TAVILY_API_KEY still needed directly for the payload dict
 TAVILY_API_KEY: str = tavily_pool.current() if len(tavily_pool) > 0 else ""
-_MODEL = "llama-3.3-70b-versatile"
 logger = logging.getLogger(__name__)
+
+_DEFAULT_MODELS = [
+    "openai/gpt-oss-120b",
+    "qwen/qwen3.8-27b",
+    "openai/gpt-oss-20b",
+    "llama-3.3-70b-versatile",
+    "llama-3.1-8b-instant",
+]
+
+
+def _get_candidate_models() -> list[str]:
+    configured = os.environ.get("GROQ_MODEL", "").strip()
+    if configured:
+        return [configured] + [m for m in _DEFAULT_MODELS if m != configured]
+    return _DEFAULT_MODELS
 
 
 class _HTMLToTextParser(HTMLParser):
@@ -244,13 +258,25 @@ def draft_cover_letter_tool(job_description: str, cv_context: str) -> str:
     for api_key in rotation:
         try:
             client = Groq(api_key=api_key)
-            resp = client.chat.completions.create(
-                model=_MODEL,
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.4,
-            )
-            rotation.success()
-            return (resp.choices[0].message.content or "").strip()
+            for candidate_model in _get_candidate_models():
+                try:
+                    resp = client.chat.completions.create(
+                        model=candidate_model,
+                        messages=[{"role": "user", "content": prompt}],
+                        temperature=0.4,
+                    )
+                    rotation.success()
+                    return (resp.choices[0].message.content or "").strip()
+                except Exception as model_err:
+                    err_str = str(model_err)
+                    if "model_not_found" in err_str or "does not exist" in err_str:
+                        logger.warning(
+                            "Groq model '%s' unavailable for cover letter: %s",
+                            candidate_model,
+                            model_err,
+                        )
+                        continue
+                    raise
         except GroqRateLimitError:
             continue
         except Exception as e:

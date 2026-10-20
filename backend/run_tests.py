@@ -23,13 +23,14 @@ async def test_gemini_embeddings():
 
 
 async def test_groq():
-    print("Testing Groq Llama 3.3...")
+    model = os.environ.get("GROQ_MODEL", "openai/gpt-oss-120b")
+    print(f"Testing Groq ({model})...")
     try:
         from groq import Groq
         groq_client = Groq(api_key=os.environ.get("GROQ_API_KEY", ""))
         chat_completion = groq_client.chat.completions.create(
             messages=[{"role": "user", "content": "Say hello in one word."}],
-            model="llama-3.3-70b-versatile",
+            model=model,
         )
         print(f"  [SUCCESS] Groq works! Response: '{chat_completion.choices[0].message.content.strip()}'")
         return True
