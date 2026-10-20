@@ -11,6 +11,11 @@ Built on a free-tier stack. No paid APIs. No credit card.
 - AI Assistant: streams grounded career advice with session memory, CV retrieval, and Copilot-style actions such as opening routes, pre-filling search boxes, drafting goals/tasks, and preparing application notes for review.
 - My Journey: gives the user a daily workspace with Today, Applications, Goals & Tasks, Calendar, and Progress views, all tied to real tracker data and proactive nudges.
 
+## presentation video:
+https://www.youtube.com/watch?v=xhDKO3FoyOs
+
+
+
 ## Product Map
 
 | Route | Visible label | Purpose |
