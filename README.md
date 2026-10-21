@@ -1,4 +1,4 @@
-# CareerPilot
+# CareerPilot(RAG system)
 
 CareerPilot is an agentic career co-pilot for Codesprint 2026. It hunts jobs, scores fit against a user's real CV, drafts personalized guidance, and keeps the user's daily career work organized in one place.
 
